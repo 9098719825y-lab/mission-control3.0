@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Mission Control — JEE + Board</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B1220">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#0B1220;
+    --bg2:#101A2E;
+    --panel:#141F38;
+    --panel-line:#233254;
+    --gold:#D6A94A;
+    --gold-dim:#8A6D2E;
+    --blue:#4C7FE0;
+    --text:#E8EDF7;
+    --text-dim:#8C99B8;
+    --green:#4CAF7D;
+    --red:#D9695B;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:radial-gradient(1200px 800px at 20% -10%, #16223F 0%, var(--bg) 55%);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    min-height:100vh;
+    padding-bottom:84px;
+  }
+  .topbar{
+    position:sticky; top:0; z-index:20;
+    background:linear-gradient(180deg, rgba(11,18,32,0.98), rgba(11,18,32,0.92));
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--panel-line);
+    padding:14px 16px 10px;
+  }
+  .brand{
+    display:flex; align-items:baseline; justify-content:space-between;
+  }
+  .brand h1{
+    font-size:15px; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--gold); margin:0; font-weight:700;
+  }
+  .brand .date{ font-size:11px; color:var(--text-dim); display:flex; align-items:baseline; gap:6px; }
+  .brand .date .clock{ color:var(--gold); font-variant-numeric:tabular-nums; font-weight:600; }
+  .hero{
+    margin-top:12px;
+    display:flex; align-items:center; gap:14px;
+  }
+  .ring{
+    position:relative; width:64px; height:64px; flex:0 0 auto;
+  }
+  .ring svg{ transform:rotate(-90deg); width:64px; height:64px; }
+  .ring circle{ fill:none; stroke-width:6; }
+  .ring .bg{ stroke:#1C2A48; }
+  .ring .fg{ stroke:var(--gold); stroke-linecap:round; transition:stroke-dashoffset .4s ease; }
+  .ring .pct{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:700; color:var(--text);
+  }
+  .hero-text .big{ font-size:22px; font-weight:800; color:var(--text); line-height:1.1; }
+  .hero-text .small{ font-size:11.5px; color:var(--text-dim); margin-top:2px; }
+
+  .tabs{
+    position:fixed; bottom:0; left:0; right:0; z-index:30;
+    display:flex; background:var(--bg2);
+    border-top:1px solid var(--panel-line);
+    padding:6px 6px calc(6px + env(safe-area-inset-bottom));
+  }
+  .tab{
+    flex:1; text-align:center; padding:8px 2px; border-radius:10px;
+    color:var(--text-dim); font-size:10.5px; letter-spacing:0.03em;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    -webkit-tap-highlight-color:transparent; user-select:none;
+  }
+  .tab .ico{ font-size:15px; }
+  .tab{ font-size:9.5px; }
+  .tab.active{ color:var(--gold); background:rgba(214,169,74,0.08); }
+
+  /* ---------- Dashboard ---------- */
+  .dash-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  .dash-card{
+    background:var(--panel); border:1px solid var(--panel-line); border-radius:14px; padding:14px;
+    text-align:center;
+  }
+  .dash-card .big-num{ font-size:22px; font-weight:800; color:var(--gold); line-height:1.1; }
+  .dash-card .lbl{ font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.04em; margin-top:4px; }
+  .dash-card.wide{ grid-column:1 / -1; }
+  .dash-card.accent{ background:linear-gradient(135deg, rgba(214,169,74,0.14), rgba(214,169,74,0.04)); border-color:rgba(214,169,74,0.3); }
+
+  .mini-subject{ margin-bottom:12px; }
+  .mini-subject-top{ display:flex; justify-content:space-between; font-size:12px; color:var(--text); margin-bottom:5px; }
+  .mini-subject-top span.pct{ color:var(--gold); }
+  .mini-bar-outer{ height:5px; border-radius:4px; background:#1C2A48; overflow:hidden; }
+  .mini-bar-inner{ height:100%; background:linear-gradient(90deg, var(--gold-dim), var(--gold)); border-radius:4px; }
+
+  .mark-today-btn{
+    width:100%; background:linear-gradient(135deg, var(--gold), var(--gold-dim)); color:#1B1408;
+    border:none; border-radius:12px; padding:13px; font-weight:800; font-size:13.5px; margin-top:4px;
+  }
+  .mark-today-btn.done{ background:linear-gradient(135deg, var(--green), #1F5C3F); color:white; }
+
+  /* ---------- Daily Tracker calendar ---------- */
+  .streak-banner{
+    display:flex; justify-content:space-around; background:var(--panel); border:1px solid var(--panel-line);
+    border-radius:14px; padding:14px; margin-bottom:14px;
+  }
+  .streak-banner .item{ text-align:center; }
+  .streak-banner .num{ font-size:20px; font-weight:800; color:var(--gold); }
+  .streak-banner .lbl{ font-size:9.5px; color:var(--text-dim); text-transform:uppercase; }
+  .month-block{ margin-bottom:18px; }
+  .month-title{ font-size:12px; font-weight:700; color:var(--cyan,var(--gold)); margin-bottom:8px; letter-spacing:0.04em; }
+  .day-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .day-chip{
+    width:30px; height:30px; border-radius:7px; background:#1C2A48; border:1px solid var(--panel-line);
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--text-dim);
+  }
+  .day-chip.done{ background:linear-gradient(160deg, var(--gold), var(--gold-dim)); color:#1B1408; font-weight:700; border-color:transparent; }
+  .day-chip.today{ box-shadow:0 0 0 2px var(--gold); }
+  .day-chip.future{ opacity:0.35; }
+
+  .view{ display:none; padding:16px; max-width:640px; margin:0 auto; }
+  .view.active{ display:block; }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--panel-line); border-radius:var(--radius);
+    padding:16px; margin-bottom:14px;
+  }
+  .panel h2{
+    font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold);
+    margin:0 0 10px; font-weight:700;
+  }
+  .panel p{ font-size:13.5px; line-height:1.6; color:#CBD5EE; margin:0 0 8px; }
+  .rule{
+    display:flex; gap:8px; font-size:13px; color:#CBD5EE; padding:6px 0;
+    border-bottom:1px dashed var(--panel-line);
+  }
+  .rule:last-child{ border-bottom:none; }
+  .rule .dot{ color:var(--gold); flex:0 0 auto; }
+
+  .phase{
+    display:flex; gap:10px; padding:9px 0; border-bottom:1px solid var(--panel-line); align-items:flex-start;
+  }
+  .phase:last-child{ border:none; }
+  .phase .n{
+    flex:0 0 22px; height:22px; border-radius:50%; background:rgba(214,169,74,0.14);
+    color:var(--gold); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center;
+  }
+  .phase .info b{ font-size:13px; color:var(--text); }
+  .phase .info .period{ font-size:10.5px; color:var(--gold-dim); margin:1px 0 2px; }
+  .phase .info .desc{ font-size:12px; color:var(--text-dim); }
+
+  /* Timetable */
+  .toggle{ display:flex; background:var(--bg2); border-radius:10px; padding:3px; margin-bottom:12px; }
+  .toggle button{
+    flex:1; padding:9px; border:none; background:transparent; color:var(--text-dim);
+    font-size:12.5px; font-weight:600; border-radius:8px;
+  }
+  .toggle button.active{ background:var(--panel); color:var(--gold); }
+  .tt-row{
+    display:flex; gap:10px; padding:9px 0; border-bottom:1px solid var(--panel-line);
+    align-items:center; font-size:12.5px;
+  }
+  .tt-row:last-child{ border:none; }
+  .tt-time{ flex:0 0 108px; color:var(--text-dim); font-variant-numeric:tabular-nums; }
+  .tt-row.block .tt-time{ color:var(--blue); font-weight:700; }
+  .tt-row.block .tt-act{ color:var(--blue); font-weight:700; }
+  .tt-act{ color:var(--text); }
+
+  /* Planner / chapters */
+  .subject-head{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;
+  }
+  .subject-head h2{ margin:0; }
+  .subject-total{ font-size:11px; color:var(--text-dim); }
+  .bar-outer{ height:6px; border-radius:4px; background:#1C2A48; overflow:hidden; margin-bottom:12px; }
+  .bar-inner{ height:100%; border-radius:4px; background:linear-gradient(90deg, var(--gold-dim), var(--gold)); transition:width .3s; }
+
+  .chapter{ margin-bottom:14px; }
+  .chapter-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .chapter-name{ font-size:13px; font-weight:600; color:var(--text); }
+  .chapter-count{ font-size:11px; color:var(--gold); font-variant-numeric:tabular-nums; }
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{
+    width:28px; height:28px; border-radius:7px; background:#1C2A48; border:1px solid var(--panel-line);
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--text-dim);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .chip.done{ background:linear-gradient(160deg, var(--gold), var(--gold-dim)); color:#1B1408; border-color:transparent; font-weight:700; }
+  .notes-toggle{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:#1C2A48; border-radius:10px; padding:10px 12px; font-size:12.5px; color:var(--text);
+  }
+  .switch{ width:40px; height:22px; border-radius:20px; background:#2A3A5E; position:relative; flex:0 0 auto; }
+  .switch.on{ background:var(--green); }
+  .switch::after{
+    content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%;
+    background:white; transition:left .2s;
+  }
+  .switch.on::after{ left:20px; }
+
+  /* Tracker / log */
+  .log-form{ display:flex; flex-direction:column; gap:8px; margin-bottom:14px; }
+  .log-form .row2{ display:flex; gap:8px; }
+  .log-form input, .log-form select{
+    background:#1C2A48; border:1px solid var(--panel-line); border-radius:9px; color:var(--text);
+    padding:10px; font-size:13px; flex:1;
+  }
+  .log-form button{
+    background:var(--gold); color:#1B1408; border:none; border-radius:9px; padding:11px; font-weight:700; font-size:13px;
+  }
+  .log-entry{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 0; border-bottom:1px solid var(--panel-line); font-size:12.5px;
+  }
+  .log-entry:last-child{ border:none; }
+  .log-entry .left b{ color:var(--text); }
+  .log-entry .left .sub{ color:var(--text-dim); font-size:11px; }
+  .log-entry .del{ color:var(--red); font-size:11px; }
+  .empty{ color:var(--text-dim); font-size:12.5px; text-align:center; padding:20px 0; }
+
+  .stat-grid{ display:flex; gap:10px; margin-bottom:14px; }
+  .stat{
+    flex:1; background:var(--panel); border:1px solid var(--panel-line); border-radius:12px; padding:12px; text-align:center;
+  }
+  .stat .num{ font-size:20px; font-weight:800; color:var(--gold); }
+  .stat .lbl{ font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.05em; margin-top:2px; }
+
+  .reset-link{ text-align:center; font-size:11px; color:var(--text-dim); margin-top:6px; text-decoration:underline; }
+  .habit-scroll{ overflow-x:auto; }
+  .habit-table{ border-collapse:collapse; font-size:10px; }
+  .habit-table th{ color:var(--text-dim); font-weight:600; padding:4px 3px; text-align:center; min-width:22px; }
+  .habit-name{ color:var(--text); font-size:10.5px; padding-right:8px; white-space:nowrap; text-align:left; max-width:110px; }
+  .habit-cell{
+    width:20px; height:20px; border-radius:5px; background:#1C2A48; border:1px solid var(--panel-line);
+    display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--gold); margin:2px;
+  }
+  .habit-cell.on{ background:linear-gradient(160deg, var(--gold), var(--gold-dim)); color:#1B1408; border-color:transparent; font-weight:700; }
+  .habit-table th.today{ color:var(--gold); }
+  .habit-table th{ line-height:1.3; }
+
+  .week-bar-chart{ display:flex; justify-content:space-between; align-items:flex-end; gap:8px; height:120px; margin-bottom:14px; }
+  .week-bar-col{ flex:1; display:flex; flex-direction:column; align-items:center; height:100%; }
+  .week-bar-track{ flex:1; width:100%; max-width:26px; background:#1C2A48; border-radius:6px; display:flex; align-items:flex-end; overflow:hidden; }
+  .week-bar-fill{ width:100%; background:linear-gradient(180deg, var(--gold), var(--gold-dim)); border-radius:6px 6px 0 0; transition:height .3s; min-height:2px; }
+  .week-bar-fill.today{ background:linear-gradient(180deg, var(--blue), #2A4A8A); }
+  .week-bar-label{ margin-top:6px; font-size:10.5px; color:var(--text-dim); font-weight:600; }
+  .week-bar-label.today{ color:var(--blue); }
+  .week-stats-row{ display:flex; justify-content:space-between; border-top:1px solid var(--panel-line); padding-top:12px; }
+  .wstat{ text-align:center; flex:1; }
+  .wstat .wnum{ font-size:17px; font-weight:800; color:var(--gold); }
+  .wstat .wlbl{ font-size:9.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.04em; margin-top:2px; }
+
+  .habit-donut-wrap{ display:flex; flex-direction:column; align-items:center; margin-bottom:16px; }
+  .habit-donut{ position:relative; width:110px; height:110px; }
+  .habit-donut svg{ width:100%; height:100%; transform:rotate(-90deg); }
+  .habit-donut circle{ fill:none; stroke-width:9; }
+  .hd-bg{ stroke:#1C2A48; }
+  .hd-fg{ stroke:var(--gold); stroke-linecap:round; transition:stroke-dashoffset .4s; }
+  .habit-donut-pct{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; color:var(--text); }
+  .habit-donut-sub{ font-size:10.5px; color:var(--text-dim); margin-top:8px; }
+
+  .habit-rank-row{ display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--panel-line); }
+  .habit-rank-row:last-child{ border-bottom:none; }
+  .hr-num{ flex:0 0 20px; color:var(--gold); font-weight:700; font-size:12px; }
+  .hr-info{ flex:1; min-width:0; }
+  .hr-name{ font-size:12px; color:var(--text); margin-bottom:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hr-bar-outer{ height:5px; border-radius:3px; background:#1C2A48; overflow:hidden; }
+  .hr-bar-inner{ height:100%; background:linear-gradient(90deg, var(--gold-dim), var(--gold)); border-radius:3px; }
+  .hr-count{ flex:0 0 auto; font-size:12px; color:var(--gold); font-weight:700; min-width:18px; text-align:right; }
+  .loading{ text-align:center; padding:40px; color:var(--text-dim); font-size:13px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <h1>Mission Control</h1>
+    <div class="date"><span id="today"></span><span class="clock" id="clock"></span></div>
+  </div>
+  <div class="hero">
+    <div class="ring">
+      <svg viewBox="0 0 64 64">
+        <circle class="bg" cx="32" cy="32" r="27"></circle>
+        <circle class="fg" id="ringFg" cx="32" cy="32" r="27" stroke-dasharray="169.6" stroke-dashoffset="169.6"></circle>
+      </svg>
+      <div class="pct" id="ringPct">0%</div>
+    </div>
+    <div class="hero-text">
+      <div class="big" id="heroLeft">199 lectures left</div>
+      <div class="small">Target clear: ~22 Nov 2026</div>
+    </div>
+  </div>
+</div>
+
+<div id="app" class="loading">Loading your progress…</div>
+
+<div class="tabs">
+  <div class="tab active" data-view="dashboard"><span class="ico">🏠</span>Dashboard</div>
+  <div class="tab" data-view="overview"><span class="ico">🎯</span>Strategy</div>
+  <div class="tab" data-view="timetable"><span class="ico">⏱️</span>Timetable</div>
+  <div class="tab" data-view="planner"><span class="ico">📚</span>Planner</div>
+  <div class="tab" data-view="tracker"><span class="ico">📈</span>Progress</div>
+  <div class="tab" data-view="daily"><span class="ico">✅</span>Daily</div>
+</div>
+
+<script>
+const SUBJECT_LIST = ['chem','phy','ioc'];
+const CHAPTERS = {
+  chem: [
+    {name:"Optical Isomerism (OC)", total:3},
+    {name:"Hydrocarbon (OC)", total:6},
+    {name:"Haloalkane & Haloarenes (OC)", total:14},
+    {name:"Alcohols, Phenols & Ethers (OC)", total:10},
+    {name:"Aldehydes, Ketones & Carboxylic Acids (OC)", total:7},
+    {name:"Amines (OC)", total:1},
+    {name:"Biomolecules (OC)", total:1},
+    {name:"Polymers (OC)", total:1},
+    {name:"Chemistry in Everyday Life (OC)", total:1},
+    {name:"Solutions (PC)", total:16, prefill:16},
+    {name:"Chemical Kinetics (PC)", total:14},
+    {name:"Electrochemistry (PC)", total:13},
+  ],
+  phy: [
+    {name:"Electrostatics", total:30, prefill:30},
+    {name:"Electric Potential, Dipole & Conductor", total:14, prefill:14},
+    {name:"Current Electricity", total:13, prefill:13},
+    {name:"Capacitance", total:13, prefill:13},
+    {name:"Moving Charges & Magnetism", total:16, prefill:16},
+    {name:"Magnetism & Matter", total:1},
+    {name:"Electromagnetic Induction", total:11, prefill:2},
+    {name:"Alternating Current", total:9},
+    {name:"Electromagnetic Waves", total:2},
+    {name:"Semiconductor", total:1},
+    {name:"Modern Physics", total:3},
+  ],
+  ioc: [
+    {name:"Coordination Compounds", total:15},
+    {name:"d and f-Block Elements", total:6},
+  ]
+};
+function computeTotalLectures(){
+  let t = 0;
+  SUBJECT_LIST.forEach(sub=> CHAPTERS[sub].forEach(ch=> t += ch.total));
+  return t;
+}
+const TOTAL_LECTURES = computeTotalLectures();
+
+let progress = { chem:{}, phy:{}, ioc:{} };
+let logEntries = [];
+
+function initProgress(){
+  SUBJECT_LIST.forEach(sub=>{
+    if(!progress[sub]) progress[sub] = {};
+    CHAPTERS[sub].forEach(ch=>{
+      let arr = progress[sub][ch.name];
+      if(!arr){
+        arr = new Array(ch.total).fill(false);
+      } else if(arr.length !== ch.total){
+        // chapter total changed since last save (e.g. new lectures added) — resize, keep existing ticks
+        const resized = new Array(ch.total).fill(false);
+        for(let i=0;i<Math.min(arr.length, ch.total);i++) resized[i] = arr[i];
+        arr = resized;
+      }
+      const pre = ch.prefill || 0;
+      const trueCount = arr.filter(Boolean).length;
+      if(trueCount < pre){
+        for(let i=0;i<pre;i++) arr[i] = true;
+      }
+      progress[sub][ch.name] = arr;
+    });
+  });
+}
+
+async function loadState(){
+  try{
+    const p = localStorage.getItem('mc-progress');
+    if(p) progress = JSON.parse(p);
+  }catch(e){ /* no data yet */ }
+  try{
+    const l = localStorage.getItem('mc-log');
+    if(l) logEntries = JSON.parse(l);
+  }catch(e){ /* no data yet */ }
+  initProgress();
+}
+async function saveProgress(){
+  try{ localStorage.setItem('mc-progress', JSON.stringify(progress)); }
+  catch(e){ console.error('save progress failed', e); }
+}
+async function saveLog(){
+  try{ localStorage.setItem('mc-log', JSON.stringify(logEntries)); }
+  catch(e){ console.error('save log failed', e); }
+}
+
+function countDone(){
+  let done = 0;
+  SUBJECT_LIST.forEach(sub=>{
+    CHAPTERS[sub].forEach(ch=>{
+      done += progress[sub][ch.name].filter(Boolean).length;
+    });
+  });
+  return done;
+}
+
+function updateHero(){
+  const done = countDone();
+  const left = TOTAL_LECTURES - done;
+  const pct = Math.round((done/TOTAL_LECTURES)*100);
+  document.getElementById('heroLeft').textContent = left + ' lectures left';
+  document.getElementById('ringPct').textContent = pct + '%';
+  const circumference = 2*Math.PI*27;
+  const offset = circumference - (pct/100)*circumference;
+  document.getElementById('ringFg').style.strokeDasharray = circumference.toFixed(1);
+  document.getElementById('ringFg').style.strokeDashoffset = offset.toFixed(1);
+}
+
+function subjectDone(sub){
+  return CHAPTERS[sub].reduce((s,ch)=> s + progress[sub][ch.name].filter(Boolean).length, 0);
+}
+function subjectTotal(sub){
+  return CHAPTERS[sub].reduce((s,ch)=> s + ch.total, 0);
+}
+
+/* ---------- KEY DATES (verified) ---------- */
+const JEE_JAN = new Date('2027-01-22');
+const JEE_APR = new Date('2027-04-01'); // tentative, NTA hasn't confirmed exact date yet
+const BOARD_START = new Date('2027-02-17');
+const DAILY_START = new Date('2026-10-17');
+const DAILY_END = new Date('2027-04-30');
+
+function daysUntil(dateObj){
+  const now = new Date(); now.setHours(0,0,0,0);
+  const target = new Date(dateObj); target.setHours(0,0,0,0);
+  return Math.max(0, Math.ceil((target-now)/86400000));
+}
+function dstr(d){ return d.toISOString().slice(0,10); }
+
+/* ---------- Daily Tracker (tick calendar) ---------- */
+let dailyTicks = {};
+function loadDailyTicks(){ try{ const d = localStorage.getItem('mc-daily-ticks'); dailyTicks = d ? JSON.parse(d) : {}; }catch(e){ dailyTicks = {}; } }
+function saveDailyTicks(){ try{ localStorage.setItem('mc-daily-ticks', JSON.stringify(dailyTicks)); }catch(e){} }
+function computeStreak(){
+  let streak = 0;
+  let d = new Date(); d.setHours(0,0,0,0);
+  // if today not ticked yet, start counting from yesterday
+  if(!dailyTicks[dstr(d)]) d.setDate(d.getDate()-1);
+  while(dailyTicks[dstr(d)]){
+    streak++;
+    d.setDate(d.getDate()-1);
+  }
+  return streak;
+}
+function renderDailyTracker(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayKey = dstr(today);
+  const elapsedDays = Math.floor((Math.min(today,DAILY_END) - DAILY_START)/86400000) + 1;
+  const tickedCount = Object.keys(dailyTicks).filter(k=> dailyTicks[k] && k >= dstr(DAILY_START) && k <= dstr(DAILY_END)).length;
+  const streak = computeStreak();
+
+  let months = [];
+  let cursor = new Date(DAILY_START);
+  while(cursor <= DAILY_END){
+    const y = cursor.getFullYear(), m = cursor.getMonth();
+    const key = y+'-'+m;
+    let group = months.find(g=>g.key===key);
+    if(!group){ group = {key, label: cursor.toLocaleDateString('en-IN',{month:'long', year:'numeric'}), days:[]}; months.push(group); }
+    group.days.push(new Date(cursor));
+    cursor.setDate(cursor.getDate()+1);
+  }
+
+  const monthsHtml = months.map(g=>`
+    <div class="month-block">
+      <div class="month-title">${g.label}</div>
+      <div class="day-chips">
+        ${g.days.map(d=>{
+          const key = dstr(d);
+          const isFuture = d > today;
+          const isToday = key === todayKey;
+          const on = !!dailyTicks[key];
+          return `<div class="day-chip ${on?'done':''} ${isToday?'today':''} ${isFuture?'future':''}" data-date="${key}">${d.getDate()}</div>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+
+  return `
+  <div class="streak-banner">
+    <div class="item"><div class="num">${streak}🔥</div><div class="lbl">Current Streak</div></div>
+    <div class="item"><div class="num">${tickedCount}/${elapsedDays}</div><div class="lbl">Days Ticked</div></div>
+    <div class="item"><div class="num">${Math.round((tickedCount/Math.max(1,elapsedDays))*100)}%</div><div class="lbl">Consistency</div></div>
+  </div>
+  <div class="panel">
+    <p>Roz jo bhi padhoge (chahe kam ho ya zyada), us din ko yahan tick kar do. Yeh sirf "showed up today" ka tracker hai — poora Oct 2026 se April 2027 JEE attempt tak.</p>
+  </div>
+  ${monthsHtml}`;
+}
+
+/* ---------- RENDER: DASHBOARD ---------- */
+function renderDashboard(){
+  const done = countDone();
+  const left = TOTAL_LECTURES - done;
+  const pct = Math.round((done/TOTAL_LECTURES)*100);
+  const streak = computeStreak();
+  const todayKey = dstr(new Date());
+  const todayDone = !!dailyTicks[todayKey];
+
+  const subjectRows = [
+    {key:'chem', label:'Chemistry'},
+    {key:'phy', label:'Physics'},
+    {key:'ioc', label:'Chem (IOC)'},
+  ].map(s=>{
+    const d = subjectDone(s.key), t = subjectTotal(s.key);
+    const p = Math.round((d/t)*100);
+    return `<div class="mini-subject">
+      <div class="mini-subject-top"><span>${s.label}</span><span class="pct">${d}/${t} · ${p}%</span></div>
+      <div class="mini-bar-outer"><div class="mini-bar-inner" style="width:${p}%"></div></div>
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="dash-grid">
+    <div class="dash-card accent"><div class="big-num">${pct}%</div><div class="lbl">Backlog Cleared</div></div>
+    <div class="dash-card"><div class="big-num">${left}</div><div class="lbl">Lectures Left</div></div>
+    <div class="dash-card"><div class="big-num">${daysUntil(JEE_JAN)}</div><div class="lbl">Days to JEE Jan</div></div>
+    <div class="dash-card"><div class="big-num">${daysUntil(BOARD_START)}</div><div class="lbl">Days to Board</div></div>
+    <div class="dash-card"><div class="big-num">${daysUntil(JEE_APR)}</div><div class="lbl">Days to JEE Apr*</div></div>
+    <div class="dash-card"><div class="big-num">${streak}🔥</div><div class="lbl">Day Streak</div></div>
+  </div>
+  <div class="panel">
+    <h2>Today — ${new Date().toLocaleDateString('en-IN',{weekday:'long', day:'numeric', month:'long'})}</h2>
+    <button class="mark-today-btn ${todayDone?'done':''}" id="markTodayBtn">${todayDone ? '✓ Aaj ka din mark ho chuka hai' : 'Aaj padhai ki? Yahan tap karo'}</button>
+  </div>
+  <div class="panel">
+    <h2>Subject Progress</h2>
+    ${subjectRows}
+  </div>
+  <div class="panel">
+    <p style="font-size:11px; color:var(--text-dim)">*JEE April 2027 (Session 2) date abhi NTA ne officially confirm nahi kiya — first week of April expected hai, isliye yeh countdown tentative hai. Board: MP Board Class 12 Physics 4 March, Chemistry 13 March, Math 16 March 2027.</p>
+  </div>`;
+}
+
+/* ---------- RENDER: OVERVIEW ---------- */
+function renderOverview(){
+  return `
+  <div class="panel">
+    <h2>Overall Strategy</h2>
+    <p>Math tracking yahan se hata diya gaya hai (separately handle ho raha hai). Focus ab Chemistry + Physics + Inorganic Chem backlog par hai. Clear backlog fast without burnout, sync with live syllabus, then split focus between JEE (Jan attempt) and Board (Feb–March), with April JEE as the real target.</p>
+  </div>
+  <div class="panel">
+    <h2>Phases</h2>
+    <div class="phase"><div class="n">1</div><div class="info"><b>Backlog Clear</b><div class="period">12 Oct – ~22 Nov</div><div class="desc">199 backlog lectures + notes + practice, 1 subject/day rotation</div></div></div>
+    <div class="phase"><div class="n">2</div><div class="info"><b>Sync + Practice</b><div class="period">Nov 8 – Nov 30</div><div class="desc">Stay current with live classes, heavy practice + PYQs</div></div></div>
+    <div class="phase"><div class="n">3</div><div class="info"><b>Full Revision</b><div class="period">December</div><div class="desc">All chapters revised, weak areas, chapter-wise mocks</div></div></div>
+    <div class="phase"><div class="n">4</div><div class="info"><b>JEE Attempt 1</b><div class="period">January</div><div class="desc">Experience run — no pressure, best score counts later</div></div></div>
+    <div class="phase"><div class="n">5</div><div class="info"><b>Board Focus</b><div class="period">Feb – March</div><div class="desc">Board priority: 30% → 90%+</div></div></div>
+    <div class="phase"><div class="n">6</div><div class="info"><b>JEE Attempt 2</b><div class="period">April</div><div class="desc">Real target attempt (best of Jan/Apr counts)</div></div></div>
+  </div>
+  <div class="panel">
+    <h2>Core Rules</h2>
+    <div class="rule"><span class="dot">●</span>One subject per day only — full focus, no mixing.</div>
+    <div class="rule"><span class="dot">●</span>Chapter order fixed as written — chapters are conceptually connected.</div>
+    <div class="rule"><span class="dot">●</span>Every lecture = watch + notes + 10-15 practice Qs, same session.</div>
+    <div class="rule"><span class="dot">●</span>Live classes paused until backlog majority clear.</div>
+    <div class="rule"><span class="dot">●</span>Phone stays out of the room during study blocks.</div>
+    <div class="rule"><span class="dot">●</span>Sleep protected: 7 hours minimum, non-negotiable.</div>
+  </div>`;
+}
+
+/* ---------- RENDER: TIMETABLE ---------- */
+const SCHOOL_TT = [
+  ["10:00 AM","Wake up",0],["10:00–10:20","Get ready",0],["10:20–10:55","Buffer / breakfast",0],
+  ["11:00–4:00","School",0],["4:00–4:30","Rest",0],["4:30–4:45","Music break",0],
+  ["4:45–6:45 PM","STUDY BLOCK 1",1],["6:45–7:00","Short break",0],
+  ["7:00–9:00 PM","STUDY BLOCK 2",1],["9:00–9:45","Dinner",0],
+  ["9:45–12:15 AM","STUDY BLOCK 3",1],["12:15–12:30","Break",0],
+  ["12:30–3:00 AM","STUDY BLOCK 4",1],["3:00 AM","Sleep",0],
+];
+const SUNDAY_TT = [
+  ["1:00 PM","Wake up",0],["1:00–2:00 PM","Ready + meal",0],
+  ["2:00–5:00 PM","STUDY BLOCK 1",1],["5:00–5:30","Break",0],
+  ["5:30–8:30 PM","STUDY BLOCK 2",1],["8:30–9:15","Dinner",0],
+  ["9:15–12:30 AM","STUDY BLOCK 3",1],["12:30–1:00 AM","Break",0],
+  ["1:00–5:00 AM","STUDY BLOCK 4",1],["5:00 AM","Sleep",0],
+];
+function renderTimetable(which){
+  const rows = which === 'sunday' ? SUNDAY_TT : SCHOOL_TT;
+  const label = which === 'sunday' ? '~11.5 hrs study · No School' : '~8.5 hrs study · School Day';
+  return `
+  <div class="panel">
+    <div class="toggle">
+      <button data-tt="school" class="${which!=='sunday'?'active':''}">School Day</button>
+      <button data-tt="sunday" class="${which==='sunday'?'active':''}">Sunday</button>
+    </div>
+    ${rows.map(r=>`<div class="tt-row ${r[2]?'block':''}"><div class="tt-time">${r[0]}</div><div class="tt-act">${r[1]}</div></div>`).join('')}
+    <p style="margin-top:10px">${label}</p>
+  </div>`;
+}
+
+/* ---------- RENDER: PLANNER ---------- */
+function renderChapterBlock(sub, ch){
+  const arr = progress[sub][ch.name];
+  const done = arr.filter(Boolean).length;
+  const chips = arr.map((v,i)=>`<div class="chip ${v?'done':''}" data-sub="${sub}" data-chap="${ch.name}" data-idx="${i}">${i+1}</div>`).join('');
+  return `
+  <div class="chapter">
+    <div class="chapter-top">
+      <div class="chapter-name">${ch.name}</div>
+      <div class="chapter-count">${done}/${ch.total}</div>
+    </div>
+    <div class="chips">${chips}</div>
+  </div>`;
+}
+function renderSubjectPanel(sub, title){
+  const done = subjectDone(sub), total = subjectTotal(sub);
+  const pct = Math.round((done/total)*100);
+  return `
+  <div class="panel">
+    <div class="subject-head"><h2>${title}</h2><span class="subject-total">${done}/${total}</span></div>
+    <div class="bar-outer"><div class="bar-inner" style="width:${pct}%"></div></div>
+    ${CHAPTERS[sub].map(ch=>renderChapterBlock(sub, ch)).join('')}
+  </div>`;
+}
+function renderPlanner(){
+  return renderSubjectPanel('chem','Chemistry (OC+PC)')
+       + renderSubjectPanel('phy','Physics')
+       + renderSubjectPanel('ioc','Chemistry (IOC)');
+}
+
+/* ---------- RENDER: TRACKER ---------- */
+function renderTracker(){
+  const done = countDone();
+  const left = TOTAL_LECTURES - done;
+  const daysLeft = Math.max(0, Math.ceil((new Date('2026-11-22') - new Date())/86400000));
+  const entries = logEntries.slice().reverse();
+  return `
+  <div class="stat-grid">
+    <div class="stat"><div class="num">${done}</div><div class="lbl">Cleared</div></div>
+    <div class="stat"><div class="num">${left}</div><div class="lbl">Left</div></div>
+    <div class="stat"><div class="num">${daysLeft}</div><div class="lbl">Days to 22 Nov</div></div>
+  </div>
+  <div class="panel">
+    <h2>Daily Tracker</h2>
+    <div class="log-form">
+      <input type="date" id="logDate" value="${new Date().toISOString().slice(0,10)}">
+      <div class="row2">
+        <input type="time" id="logSleep" placeholder="Sleep time">
+        <input type="time" id="logWake" placeholder="Wake time">
+      </div>
+      <div class="row2">
+        <select id="logSubject">
+          <option value="Chemistry">Chemistry</option>
+          <option value="Physics">Physics</option>
+
+        </select>
+        <input type="number" id="logCount" placeholder="Lectures done" min="0">
+      </div>
+      <input type="number" id="logHours" placeholder="Total study hours today" min="0" step="0.5">
+      <input type="text" id="logGoal" placeholder="Aaj ka goal (e.g. Capacitance finish)">
+      <select id="logStatus">
+        <option value="Achieved">Goal Achieved ✅</option>
+        <option value="Partial">Partially Done 🟡</option>
+        <option value="Missed">Missed ❌</option>
+      </select>
+      <button id="logAddBtn">Add Entry</button>
+    </div>
+    ${entries.length === 0 ? '<div class="empty">No entries yet. Log today&#39;s work above.</div>' :
+      entries.map((e,i)=>`
+      <div class="log-entry">
+        <div class="left"><b>${e.date}</b> — ${e.subject}, ${e.count} lec ${e.hours?`· ${e.hours}h`:''}
+          <div class="sub">${e.sleep && e.wake ? `Sleep ${e.sleep} → Wake ${e.wake} · ` : ''}${e.status ? statusLabel(e.status) : ''}</div>
+          ${e.goal ? `<div class="sub">Goal: ${e.goal}</div>` : ''}
+          <div class="sub">Backlog left that day: ${e.leftSnapshot}</div>
+        </div>
+        <div class="del" data-del="${logEntries.length-1-i}">Delete</div>
+      </div>`).join('')}
+  </div>
+  <div class="panel">
+    <h2>Weekly Progress</h2>
+    ${renderWeekBarChart()}
+  </div>
+  <div class="panel">
+    <h2>Daily Habits — This Week</h2>
+    ${renderHabitGrid()}
+  </div>
+  <div class="panel">
+    <h2>Overall Progress</h2>
+    ${renderOverallHabitProgress()}
+  </div>
+  <div class="reset-link" id="resetLink">Reset all progress</div>`;
+}
+function statusLabel(s){
+  if(s==='Achieved') return 'Goal Achieved ✅';
+  if(s==='Partial') return 'Partially Done 🟡';
+  if(s==='Missed') return 'Missed ❌';
+  return '';
+}
+
+/* ---------- Habit Tracker ---------- */
+const HABITS = ["Studied as planned", "Slept on time", "No late-night phone", "Notes+practice same day"];
+let habits = {};
+function loadHabits(){ try{ const h = localStorage.getItem('mc-habits'); habits = h ? JSON.parse(h) : {}; }catch(e){ habits = {}; } }
+function saveHabits(){ try{ localStorage.setItem('mc-habits', JSON.stringify(habits)); }catch(e){} }
+function last14Dates(){
+  const arr = [];
+  for(let i=13;i>=0;i--){
+    const d = new Date();
+    d.setDate(d.getDate()-i);
+    arr.push(d.toISOString().slice(0,10));
+  }
+  return arr;
+}
+function getWeekDates(){
+  const today = new Date();
+  const day = today.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + diffToMonday);
+  const arr = [];
+  for(let i=0;i<7;i++){ const d = new Date(monday); d.setDate(monday.getDate()+i); arr.push(d.toISOString().slice(0,10)); }
+  return arr;
+}
+function habitsDoneOnDate(date){
+  let c = 0; HABITS.forEach(h=>{ if(habits[h] && habits[h][date]) c++; }); return c;
+}
+const DAY_LETTERS = ['M','T','W','T','F','S','S'];
+function renderWeekBarChart(){
+  const dates = getWeekDates();
+  const todayStr = new Date().toISOString().slice(0,10);
+  const completed = dates.reduce((s,d)=> s + habitsDoneOnDate(d), 0);
+  const goal = HABITS.length * 7;
+  const left = goal - completed;
+  const pct = goal ? Math.round((completed/goal)*100) : 0;
+  let bars = '<div class="week-bar-chart">';
+  dates.forEach((d,i)=>{
+    const h = habitsDoneOnDate(d);
+    const pctBar = HABITS.length ? Math.round((h/HABITS.length)*100) : 0;
+    const isToday = d === todayStr;
+    bars += `<div class="week-bar-col">
+      <div class="week-bar-track"><div class="week-bar-fill ${isToday?'today':''}" style="height:${pctBar}%"></div></div>
+      <div class="week-bar-label ${isToday?'today':''}">${DAY_LETTERS[i]}</div>
+    </div>`;
+  });
+  bars += '</div>';
+  return `
+    ${bars}
+    <div class="week-stats-row">
+      <div class="wstat"><div class="wnum">${completed}</div><div class="wlbl">Completed</div></div>
+      <div class="wstat"><div class="wnum">${goal}</div><div class="wlbl">Goal</div></div>
+      <div class="wstat"><div class="wnum">${left}</div><div class="wlbl">Left</div></div>
+      <div class="wstat"><div class="wnum">${pct}%</div><div class="wlbl">This Week</div></div>
+    </div>`;
+}
+function renderHabitGrid(){
+  const dates = getWeekDates();
+  const todayStr = new Date().toISOString().slice(0,10);
+  let html = '<div class="habit-scroll"><table class="habit-table"><thead><tr><th></th>';
+  dates.forEach((d,i)=>{ html += `<th class="${d===todayStr?'today':''}">${DAY_LETTERS[i]}<br>${d.slice(8,10)}</th>`; });
+  html += '</tr></thead><tbody>';
+  HABITS.forEach(habit=>{
+    html += `<tr><td class="habit-name">${habit}</td>`;
+    dates.forEach(d=>{
+      const on = habits[habit] && habits[habit][d];
+      html += `<td><div class="habit-cell ${on?'on':''}" data-habit="${habit}" data-date="${d}">${on?'✓':''}</div></td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  return html;
+}
+function renderOverallHabitProgress(){
+  const dates = last14Dates();
+  const totalPossible = HABITS.length * dates.length;
+  const totalDone = dates.reduce((s,d)=> s + habitsDoneOnDate(d), 0);
+  const pct = totalPossible ? Math.round((totalDone/totalPossible)*100) : 0;
+  const circumference = 2*Math.PI*42;
+  const offset = circumference - (pct/100)*circumference;
+
+  const ranked = HABITS.map(h=>{
+    let count = 0;
+    if(habits[h]){ Object.keys(habits[h]).forEach(d=>{ if(habits[h][d]) count++; }); }
+    return {name:h, count};
+  }).sort((a,b)=> b.count - a.count);
+  const maxCount = Math.max(1, ...ranked.map(r=>r.count));
+
+  let rankHtml = ranked.map((r,i)=>`
+    <div class="habit-rank-row">
+      <div class="hr-num">${i+1}</div>
+      <div class="hr-info">
+        <div class="hr-name">${r.name}</div>
+        <div class="hr-bar-outer"><div class="hr-bar-inner" style="width:${Math.round((r.count/maxCount)*100)}%"></div></div>
+      </div>
+      <div class="hr-count">${r.count}</div>
+    </div>`).join('');
+
+  return `
+    <div class="habit-donut-wrap">
+      <div class="habit-donut">
+        <svg viewBox="0 0 100 100">
+          <circle class="hd-bg" cx="50" cy="50" r="42"></circle>
+          <circle class="hd-fg" cx="50" cy="50" r="42" stroke-dasharray="${circumference.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}"></circle>
+        </svg>
+        <div class="habit-donut-pct">${pct}%</div>
+      </div>
+      <div class="habit-donut-sub">Last 14 days</div>
+    </div>
+    ${rankHtml}`;
+}
+
+/* ---------- CONTROLLER ---------- */
+let currentView = 'dashboard';
+let currentTT = 'school';
+
+function render(){
+  const app = document.getElementById('app');
+  app.classList.remove('loading');
+  let html = '';
+  if(currentView === 'dashboard') html = renderDashboard();
+  else if(currentView === 'overview') html = renderOverview();
+  else if(currentView === 'timetable') html = renderTimetable(currentTT);
+  else if(currentView === 'planner') html = renderPlanner();
+  else if(currentView === 'tracker') html = renderTracker();
+  else if(currentView === 'daily') html = renderDailyTracker();
+  app.innerHTML = `<div class="view active">${html}</div>`;
+  attachHandlers();
+  updateHero();
+}
+
+function attachHandlers(){
+  document.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click', async ()=>{
+      const sub = chip.dataset.sub, chap = chip.dataset.chap, idx = +chip.dataset.idx;
+      progress[sub][chap][idx] = !progress[sub][chap][idx];
+      await saveProgress();
+      render();
+      setActiveTab(currentView);
+    });
+  });
+  document.querySelectorAll('[data-tt]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      currentTT = btn.dataset.tt;
+      render();
+      setActiveTab(currentView);
+    });
+  });
+  const addBtn = document.getElementById('logAddBtn');
+  if(addBtn){
+    addBtn.addEventListener('click', async ()=>{
+      const date = document.getElementById('logDate').value;
+      const subject = document.getElementById('logSubject').value;
+      const count = +document.getElementById('logCount').value || 0;
+      const sleep = document.getElementById('logSleep').value;
+      const wake = document.getElementById('logWake').value;
+      const hours = document.getElementById('logHours').value;
+      const goal = document.getElementById('logGoal').value.trim();
+      const status = document.getElementById('logStatus').value;
+      if(!date || count <= 0) return;
+      const leftSnapshot = TOTAL_LECTURES - countDone();
+      logEntries.push({date, subject, count, leftSnapshot, sleep, wake, hours, goal, status});
+      await saveLog();
+      render();
+      setActiveTab(currentView);
+    });
+  }
+  const markBtn = document.getElementById('markTodayBtn');
+  if(markBtn){
+    markBtn.addEventListener('click', ()=>{
+      const key = dstr(new Date());
+      dailyTicks[key] = !dailyTicks[key];
+      saveDailyTicks();
+      render();
+      setActiveTab(currentView);
+    });
+  }
+  document.querySelectorAll('.day-chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      if(chip.classList.contains('future')) return;
+      const key = chip.dataset.date;
+      dailyTicks[key] = !dailyTicks[key];
+      saveDailyTicks();
+      render();
+      setActiveTab(currentView);
+    });
+  });
+  document.querySelectorAll('.habit-cell').forEach(cell=>{
+    cell.addEventListener('click', ()=>{
+      const habit = cell.dataset.habit, date = cell.dataset.date;
+      if(!habits[habit]) habits[habit] = {};
+      habits[habit][date] = !habits[habit][date];
+      saveHabits();
+      render();
+      setActiveTab(currentView);
+    });
+  });
+  document.querySelectorAll('[data-del]').forEach(el=>{
+    el.addEventListener('click', async ()=>{
+      const idx = +el.dataset.del;
+      logEntries.splice(idx,1);
+      await saveLog();
+      render();
+      setActiveTab(currentView);
+    });
+  });
+  const reset = document.getElementById('resetLink');
+  if(reset){
+    reset.addEventListener('click', async ()=>{
+      if(confirm('Reset all progress and logs? This cannot be undone.')){
+        progress = { chem:{}, phy:{}, ioc:{} };
+        initProgress();
+        logEntries = [];
+        await saveProgress();
+        await saveLog();
+        render();
+        setActiveTab(currentView);
+      }
+    });
+  }
+}
+
+function setActiveTab(view){
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.classList.toggle('active', t.dataset.view === view);
+  });
+}
+
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    currentView = tab.dataset.view;
+    setActiveTab(currentView);
+    render();
+  });
+});
+
+function updateClock(){
+  const now = new Date();
+  document.getElementById('today').textContent = now.toLocaleDateString('en-IN', {weekday:'short', day:'numeric', month:'short'});
+  document.getElementById('clock').textContent = now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true});
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+(async function boot(){
+  await loadState();
+  loadHabits();
+  loadDailyTicks();
+  render();
+})();
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
